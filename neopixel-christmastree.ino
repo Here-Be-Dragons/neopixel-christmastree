@@ -15,14 +15,14 @@ Adafruit_NeoPixel strip = Adafruit_NeoPixel(PIXEL_COUNT, PIXEL_PIN);
 ////
 
 uint32_t decayTime = 2835;                  // Start extinguishing light after elapsed seconds
-uint32_t decayDelay = 15;                    // Seconds between decay fade-out steps
-uint8_t nightHours[2] = {6,      21};       // Night mode starts at nightHours[1], ends at nightHours[0]
-uint8_t duskHours[2] =  {  7,  19  };       // Dusk mode starts at duskHours[1], ends at duskHours[0].  Needs to be inside nightHours' times.
+uint32_t decayDelay = 15;                   // Seconds between decay fade-out steps
+uint8_t nightHours[2] = {7,      22};       // Night mode starts at nightHours[1], ends at nightHours[0]
+uint8_t duskHours[2] =  {  8,  20  };       // Dusk mode starts at duskHours[1], ends at duskHours[0].  Needs to be inside nightHours' times.
                                             // Day mode starts at duskHours[0], ends at duskHours[1]
-uint16_t maxDayBrightness = 120;            // 0 - 255, lamp will not exceed this during the day
-uint16_t maxDuskBrightness = 100;            // 0 - 255, lamp will not exceed this during dusk
-uint16_t maxNightBrightness = 80;            // 0 - 255, lamp will not exceed this during the night
-uint32_t secondsPerMode = 120;               // Activates rainbowEasterEggroll after this many consecutive color changes
+uint16_t maxDayBrightness = 250;            // 0 - 255, lamp will not exceed this during the day
+uint16_t maxDuskBrightness = 170;           // 0 - 255, lamp will not exceed this during dusk
+uint16_t maxNightBrightness = 20;           // 0 - 255, lamp will not exceed this during the night
+uint32_t secondsPerMode = 120;              // Number of seconds per tree mode
 
 ////
 // End User Variables
@@ -37,9 +37,11 @@ uint8_t activeG = 0;                        // 0 - 255, Green component of activ
 uint8_t activeB = 0;                        // 0 - 255, Blue component of activeColor;
 double lastDecayDelay = 0;                  // Time Tracker for decayDelay
 uint16_t lampBrightness = maxDayBrightness; // 0 - 255, Tracks current lamp brightness
-//uint16_t maxBrightness = maxDayBrightness;  // Assigned the current max brightness
+uint16_t maxBrightness = maxDayBrightness;  // Assigned the current max brightness
 uint8_t dayTrack = 0;                       // Track day/dusk/night condition
 uint16_t activePixels = 0;                  // Tracks number of active pixels, 0 is first pixel
+uint8_t lastMinute = 0;                     // Used to track if onceAMinute() has run yet this minute
+
 
 // Variables for special effects
 uint32_t consecutiveChanges = 0;            // Track how many times the color has been changed before turning off
@@ -73,6 +75,11 @@ void loop() {
 	if (familampOverride == 1 && (Time.now() - lastColorUpdate) > 300 ) {
 	    familampOverride = 0;
 	}
+	// True once every hour
+    if (lastMinute != Time.minute()) {
+        onceAMinute();
+        lastMinute = Time.minute();
+    }
 	
 }
 
@@ -120,6 +127,17 @@ void christmasTreeLoop() {
             mode = 0;
             break;
     }
+}
+
+void onceAMinute() {
+    if (Time.hour() < nightHours[0] || Time.hour() >= nightHours[1]) { // Night hours
+        if (maxBrightness != maxNightBrightness) maxBrightness = maxNightBrightness;
+    } else if (Time.hour() < duskHours[0] || Time.hour() >= duskHours[1]) { // Dusk hours
+        if (maxBrightness != maxDuskBrightness) maxBrightness = maxDuskBrightness;
+    } else { // Everything else is day
+        if (maxBrightness != maxDayBrightness) maxBrightness = maxDayBrightness;
+    }
+    if (lampBrightness > maxBrightness) lampBrightness = maxBrightness;
 }
 
 void gotColorUpdate(const char *name, const char *data) {
